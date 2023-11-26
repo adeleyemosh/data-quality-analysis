@@ -128,3 +128,9 @@ def calculate_email_metrics(df, field_name, corresponding_meter_field='Meter Num
     metrics['Overall Score'] = overall_score
 
     return metrics
+
+def calculate_average_metrics(metrics_list, metric_name):
+    # Calculate the average of a specific metric across all key fields
+    total_metric = sum(metrics[metric_name] for metrics in metrics_list)
+    average_metric = total_metric / len(metrics_list)
+    return average_metric
