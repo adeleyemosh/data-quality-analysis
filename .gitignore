@@ -1,0 +1,13 @@
+*.csv
+*.xlsx
+*.docx
+*.pptx
+*.pdf
+
+__pycache__
+
+.vscode
+
+analysis copy.ipynb
+analysis_aedc.ipynb
+analysis_ecg.ipynb
