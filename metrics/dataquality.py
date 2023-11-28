@@ -1,8 +1,7 @@
 import pandas as pd
 import re
 
-# Updated calculate_data_quality_metrics function
-def calculate_data_quality_metrics(df, field_name):
+def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, meter_prefix=None, meter_length=None):
     metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
 
     # Only calculate metrics for specified fields
@@ -12,15 +11,20 @@ def calculate_data_quality_metrics(df, field_name):
 
         # Validity
         if field_name == 'SLRN':
-            valid_slrn = df[field_name].apply(lambda x: str(x).startswith('ECGBD') and len(str(x)) == 12)
+            valid_slrn = df[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)
             metrics['Validity'] = valid_slrn.mean() * 100
         elif field_name == 'Meter SLRN':
-            valid_meter_slrn = df[field_name].apply(lambda x: str(x).startswith('ECGCR') and len(str(x)) >= 11)
+            valid_meter_slrn = df[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)
             metrics['Validity'] = valid_meter_slrn.mean() * 100
         elif field_name == 'Account Number':
             valid_account_number = df[field_name].apply(lambda x: str(x).isnumeric())
             metrics['Validity'] = valid_account_number.mean() * 100
-        elif field_name == 'Meter Number':
+        elif field_name == 'Meter Number' and slrn_prefix == 'AEDCBD':
+            valid_meter_number = df[field_name].apply(
+                lambda x: str(x).isnumeric() and 5 <= len(str(x)) <= 13
+            )
+            metrics['Validity'] = valid_meter_number.mean() * 100
+        elif field_name == 'Meter Number' and slrn_prefix == 'ECGBD':
             valid_meter_number = df[field_name].apply(
                 lambda x: bool(re.match(r'^[0-9a-zA-Z]{5,14}$', str(x))) and sum(c.isalpha() for c in str(x)) <= 3
             )
@@ -48,48 +52,56 @@ def calculate_data_quality_metrics(df, field_name):
     return metrics
 
 # Updated calculate_phone_number_metrics function
-def calculate_phone_number_metrics(df, field_name, corresponding_meter_field='Meter Number'):
-    metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
+def calculate_phone_number_metrics(df, field_name, slrn_prefix, corresponding_meter_field='Meter Number'):
+	metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
 
-    metrics['Completeness'] = df[field_name].count() / len(df) * 100
-    
-    consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{9,12})?$', str(x)) is not None)
-    consistent_formats_percentage = consistent_formats.mean() * 100
+	metrics['Completeness'] = df[field_name].count() / len(df) * 100
 
-    valid_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+]+$', str(x)) is not None)
-    valid_characters_percentage = valid_characters.mean() * 100
+	if slrn_prefix == 'ECGBD':
+		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{9,12})?$', str(x)) is not None)
+		consistent_formats_percentage = consistent_formats.mean() * 100
+	elif slrn_prefix == 'AEDCBD':
+		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{11,13})?$', str(x)) is not None)
+		consistent_formats_percentage = consistent_formats.mean() * 100
 
-    valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {9, 10, 12})
-    valid_lengths_percentage = valid_lengths.mean() * 100
+	valid_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+]+$', str(x)) is not None)
+	valid_characters_percentage = valid_characters.mean() * 100
 
-    special_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+\s]+$', str(x)) is not None)
-    special_characters_percentage = special_characters.mean() * 100
+	if slrn_prefix == 'ECGBD':
+		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {9, 10, 12})
+		valid_lengths_percentage = valid_lengths.mean() * 100
+	elif slrn_prefix == 'AEDCBD':
+		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {10, 11, 13})
+		valid_lengths_percentage = valid_lengths.mean() * 100
 
-    no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-    no_placeholders_percentage = no_placeholders.mean() * 100
+	special_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+\s]+$', str(x)) is not None)
+	special_characters_percentage = special_characters.mean() * 100
 
-    overall_integrity = (
-        consistent_formats_percentage + 
-        valid_characters_percentage + 
-        valid_lengths_percentage +
-        special_characters_percentage + 
-        no_placeholders_percentage
-    ) / 5
+	no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+	no_placeholders_percentage = no_placeholders.mean() * 100
 
-    metrics['Validity'] = overall_integrity
-    
-    integrity_check = (
-        (consistent_formats) &
-        (valid_characters) &
-        (valid_lengths) &
-        (special_characters) &
-        (no_placeholders) &
-        (df[corresponding_meter_field].notnull())
-    ).mean() * 100
+	overall_integrity = (
+		consistent_formats_percentage + 
+		valid_characters_percentage + 
+		valid_lengths_percentage +
+		special_characters_percentage + 
+		no_placeholders_percentage
+	) / 5
 
-    metrics['Integrity'] = integrity_check
-    
-    return metrics
+	metrics['Validity'] = overall_integrity
+
+	integrity_check = (
+		(consistent_formats) &
+		(valid_characters) &
+		(valid_lengths) &
+		(special_characters) &
+		(no_placeholders) &
+		(df[corresponding_meter_field].notnull())
+	).mean() * 100
+
+	metrics['Integrity'] = integrity_check
+
+	return metrics
 
 # Updated calculate_email_metrics function
 def calculate_email_metrics(df, field_name, corresponding_meter_field='Meter Number'):
