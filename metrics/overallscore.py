@@ -12,17 +12,16 @@ def calculate_overall_score(completeness_score, validity_score, integrity_score)
     validity_score = convert_percentage_to_scale(validity_score)
     integrity_score = convert_percentage_to_scale(integrity_score)
 
-    # Define weights for each metric
+    # Weights for each metric
     completeness_weight = 0.4
     validity_weight = 0.4
     integrity_weight = 0.2
 
-    # Define the maximum possible score for each metric (assuming a scale from 0 to 5)
+    # Maximum possible score for each metric: scale from 0 to 5
     max_completeness_score = 5
     max_validity_score = 5
     max_integrity_score = 5
 
-    # Calculate the overall score using the provided formula
     overall_score = (
         (completeness_weight * (completeness_score / max_completeness_score)) +
         (validity_weight * (validity_score / max_validity_score)) +
@@ -34,7 +33,6 @@ def calculate_overall_score(completeness_score, validity_score, integrity_score)
 def calculate_overall_score_mom(df):
     overall_scores = []
     
-    # Sort the DataFrame by 'Year Month' for accurate MoM calculation
     df = df.sort_values('Year Month')
 
     for _, group in df.groupby('Year Month'):
@@ -63,7 +61,6 @@ def calculate_overall_score_mom(df):
                 
                 metrics_list.append(metrics)
 
-        # Calculate average completeness, validity, and integrity
         average_completeness = calculate_average_metrics(metrics_list, 'Completeness')
         average_validity = calculate_average_metrics(metrics_list, 'Validity')
         average_integrity = calculate_average_metrics(metrics_list, 'Integrity')
@@ -73,7 +70,6 @@ def calculate_overall_score_mom(df):
         
         overall_scores.append({'Year Month': group['Year Month'].iloc[0], 'Overall Score': overall_score})
 
-    # Create a DataFrame for MoM overall scores
     overall_scores_df = pd.DataFrame(overall_scores)
     
     # Merge MoM overall scores back to the original DataFrame
