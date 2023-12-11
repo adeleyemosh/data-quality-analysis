@@ -3,6 +3,7 @@
 *.docx
 *.pptx
 *.pdf
+*.jpg
 
 __pycache__
 
