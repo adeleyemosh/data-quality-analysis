@@ -34,16 +34,28 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
         
         # Integrity check
         if field_name == 'SLRN':
-            integrity_check = ((df['Meter Number'].notnull() & (df['Meter Number'].str.len() > 5)) | df['Account Number'].notnull()).mean() * 100
+            integrity_check = (
+                (df['SLRN'].notnull()) &
+                (df['Meter Number'].notnull() & (df['Meter Number'].str.len() > 5)) | 
+                df['Account Number'].notnull()
+            ).mean() * 100
         elif field_name == 'Meter Number':
             integrity_check = (
                 ((df['Meter Number'].notnull()) & (df['Meter Number'].str.len() >= 5) & (df['Meter Status'] == 'Metered')) |
                 ((df['Meter Number'].isnull()) & (df['Meter Status'] == 'Unmetered'))
             ).mean() * 100
         elif field_name == 'Meter SLRN':
-            integrity_check = ((df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+            integrity_check = (
+                (df['Meter SLRN'].notnull()) & 
+                (df['SLRN'].notnull()) & 
+                (df['Meter Number'].notnull())
+            ).mean() * 100
         elif field_name == 'Account Number':
-            integrity_check = ((df['Account Number'].str.len() > 3) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+            integrity_check = (
+                (df['Account Number'].str.len() > 3) & 
+                (df['SLRN'].notnull()) & 
+                (df['Meter Number'].notnull())
+            ).mean() * 100
         # else:
         #     integrity_check = 100  # For other fields, assume integrity by default
 
