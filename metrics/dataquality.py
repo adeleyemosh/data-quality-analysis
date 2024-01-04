@@ -43,9 +43,9 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
         elif field_name == 'Meter SLRN':
             integrity_check = ((df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
         elif field_name == 'Account Number':
-            integrity_check = ((df['SLRN'].notnull()) | (df['Meter Number'].notnull())).mean() * 100
-        else:
-            integrity_check = 100  # For other fields, assume integrity by default
+            integrity_check = ((df['Account Number'].str.len() > 3) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+        # else:
+        #     integrity_check = 100  # For other fields, assume integrity by default
 
         metrics['Integrity'] = integrity_check
     
