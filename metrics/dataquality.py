@@ -46,7 +46,7 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
             ).mean() * 100
         elif field_name == 'Meter SLRN':
             integrity_check = (
-                (df['Meter SLRN'].notnull()) & 
+                (df['Meter SLRN'].str.len() > 10) & 
                 (df['SLRN'].notnull()) & 
                 (df['Meter Number'].notnull())
             ).mean() * 100
