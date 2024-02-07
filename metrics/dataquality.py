@@ -1,7 +1,6 @@
 import pandas as pd
 import re
 
-from overallscore import calculate_overall_score
 
 def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, meter_prefix=None, meter_length=None):
     metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}

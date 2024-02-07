@@ -39,18 +39,18 @@ def calculate_metrics_by_month(df, key_fields):
 
         unique_meter_count = calculate_unique_meter_count(df_month, 'Year Month', 'Meter Number')['Unique Meter Count'].iloc[0]
 
-        # Construct dictionaries for each metric type
-        metrics_data = []
+        # Construct metrics data for each field
         for field_name in key_fields:
-            metrics_data.append({'Year Month': year_month, 'Metrics': 'Completeness', field_name: metrics_list[key_fields.index(field_name)]['Completeness']})
-            metrics_data.append({'Year Month': year_month, 'Metrics': 'Validity', field_name: metrics_list[key_fields.index(field_name)]['Validity']})
-            metrics_data.append({'Year Month': year_month, 'Metrics': 'Integrity', field_name: metrics_list[key_fields.index(field_name)]['Integrity']})
-
-        metrics_data.append({'Year Month': year_month, 'Metrics': 'Overall Score', **{field_name: overall_score for field_name in key_fields}})
-        metrics_data.append({'Year Month': year_month, 'Metrics': 'Unique Meter Count', **{field_name: unique_meter_count for field_name in key_fields}})
-
-        # Append metrics data to the result list
-        result_data.extend(metrics_data)
+            metrics_data = {
+                'Year Month': year_month,
+                'Key fields': field_name,
+                'Completeness': metrics_list[key_fields.index(field_name)]['Completeness'],
+                'Validity': metrics_list[key_fields.index(field_name)]['Validity'],
+                'Integrity': metrics_list[key_fields.index(field_name)]['Integrity'],
+                'Overall Score': overall_score,
+                'Unique Meter Count': unique_meter_count
+            }
+            result_data.append(metrics_data)
 
     # Convert the list of dictionaries to a DataFrame
     result_df = pd.DataFrame(result_data)
