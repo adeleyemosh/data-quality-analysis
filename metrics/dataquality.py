@@ -161,6 +161,10 @@ def calculate_average_metrics(metrics_list, metric_name):
     average_metric = total_metric / len(metrics_list)
     return average_metric
 
+def calculate_unique_meter_count(df, date_column, meter_number_column):
+    unique_meter_count = df.groupby(date_column)[meter_number_column].nunique().reset_index()
+    unique_meter_count.columns = [date_column, 'Unique Meter Count']
+    return unique_meter_count
 
 def calculate_metrics_by_month(df, key_fields):
     result_data = []
