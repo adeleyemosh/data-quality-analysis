@@ -96,9 +96,9 @@ def calculate_phone_number_metrics(df, field_name, slrn_prefix, corresponding_me
 		consistent_formats_percentage + 
 		valid_characters_percentage + 
 		valid_lengths_percentage +
-		special_characters_percentage + 
+		# special_characters_percentage + 
 		no_placeholders_percentage
-	) / 5
+	) / 4
 
 	metrics['Validity'] = overall_integrity
 
