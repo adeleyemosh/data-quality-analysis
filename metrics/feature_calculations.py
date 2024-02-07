@@ -54,5 +54,6 @@ def calculate_metrics_by_month(df, key_fields):
 
     # Convert the list of dictionaries to a DataFrame
     result_df = pd.DataFrame(result_data)
+    result_df = result_df.sort_values(by='Year Month', ascending=False)
     
     return result_df
