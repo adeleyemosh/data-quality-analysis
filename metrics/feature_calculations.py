@@ -11,7 +11,7 @@ def calculate_unique_meter_count(df, date_column, meter_number_column):
     unique_meter_count.columns = [date_column, 'Unique Meter Count']
     return unique_meter_count
 
-def calculate_metrics_by_month(df, key_fields):
+def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn, mslrn_len):
     result_data = []
 
     for year_month in df['Year Month'].unique():
@@ -24,9 +24,9 @@ def calculate_metrics_by_month(df, key_fields):
         for field_name in key_fields:
             if field_name in df.columns:
                 if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN']:
-                    metrics = calculate_data_quality_metrics(df_month, field_name, 'ECGBD', 12, 'ECGCR', 11)
+                    metrics = calculate_data_quality_metrics(df_month, field_name, bd_slrn, bdslrn_len, meter_slrn, mslrn_len)
                 elif field_name == 'Phone Number':
-                    metrics = calculate_phone_number_metrics(df_month, field_name, 'ECGBD', corresponding_meter_field='Meter Number')
+                    metrics = calculate_phone_number_metrics(df_month, field_name, bd_slrn, corresponding_meter_field='Meter Number')
                 elif field_name == 'Email':
                     metrics = calculate_email_metrics(df_month, field_name, corresponding_meter_field='Meter Number')
 
