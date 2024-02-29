@@ -20,7 +20,7 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
         elif field_name == 'Account Number':
             valid_account_number = df[field_name].apply(lambda x: str(x).isnumeric())
             metrics['Validity'] = valid_account_number.mean() * 100
-        elif field_name == 'Meter Number' and slrn_prefix == 'AEDCBD':
+        elif field_name == 'Meter Number' and (slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD'):
             valid_meter_number = df[field_name].apply(
                 lambda x: str(x).isnumeric() and 5 <= len(str(x)) <= 13
             )
@@ -73,7 +73,7 @@ def calculate_phone_number_metrics(df, field_name, slrn_prefix, corresponding_me
 	if slrn_prefix == 'ECGBD':
 		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{9,12})?$', str(x)) is not None)
 		consistent_formats_percentage = consistent_formats.mean() * 100
-	elif slrn_prefix == 'AEDCBD':
+	elif slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD':
 		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{11,13})?$', str(x)) is not None)
 		consistent_formats_percentage = consistent_formats.mean() * 100
 
@@ -83,7 +83,7 @@ def calculate_phone_number_metrics(df, field_name, slrn_prefix, corresponding_me
 	if slrn_prefix == 'ECGBD':
 		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {9, 10, 12})
 		valid_lengths_percentage = valid_lengths.mean() * 100
-	elif slrn_prefix == 'AEDCBD':
+	elif slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD':
 		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {10, 11, 13})
 		valid_lengths_percentage = valid_lengths.mean() * 100
 
