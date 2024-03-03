@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 
 from metrics.overallscore import calculate_overall_score
 from metrics.dataquality import calculate_data_quality_metrics
@@ -47,6 +48,9 @@ def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn, 
                 'Completeness': metrics_list[key_fields.index(field_name)]['Completeness'],
                 'Validity': metrics_list[key_fields.index(field_name)]['Validity'],
                 'Integrity': metrics_list[key_fields.index(field_name)]['Integrity'],
+                'Average Completeness': average_completeness,
+                'Average Validity': average_validity,
+                'Average Integrity': average_integrity,
                 'Overall Score': overall_score,
                 'Unique Meter Count': unique_meter_count
             }
@@ -57,3 +61,71 @@ def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn, 
     result_df = result_df.sort_values(by='Year Month', ascending=False)
     
     return result_df
+
+def preprocess_meter_number(meter_number):
+    """
+    Preprocess a meter number to remove scientific notation.
+    """
+    # Convert meter number to string
+    meter_number = str(meter_number)
+    
+    # Remove scientific notation if present
+    if 'e' in meter_number.lower():
+        try:
+            meter_number = '{:.0f}'.format(float(meter_number))
+        except ValueError:
+            # If conversion to float fails, return original value
+            return meter_number
+    
+    return meter_number
+
+
+def is_valid_meter_number(meter_number):
+    """
+    Check if a meter number is valid.
+    """
+    # Define conditions for meter number validity
+    valid_format = bool(re.match(r'^[0-9a-zA-Z]{5,14}$', meter_number))
+    has_alpha_chars = sum(c.isalpha() for c in meter_number) <= 3
+    
+    # Check if all conditions are met
+    return valid_format and has_alpha_chars
+
+def preprocess_phone_number(phone_number):
+    """
+    Preprocess a phone number to remove non-numeric characters.
+    """
+    # Convert phone number to string
+    phone_number = str(phone_number)
+    
+    # Remove non-numeric characters
+    phone_number = re.sub(r'\D', '', phone_number)
+    
+    return phone_number
+
+
+def is_valid_phone_number(phone_number):
+    """
+    Check if a phone number is valid.
+    Valid phone numbers must start with '233' or '+233' and have a total length of 12.
+    """
+    # Define regular expression pattern for valid phone numbers
+    pattern = r'^(\+?233)?0*\d{6,9}$'
+    
+    # Check if phone number matches the pattern
+    return bool(re.match(pattern, phone_number))
+
+
+
+def pn_has_integrity(phone_number, meter_number):
+    """
+    Check if a phone number has integrity.
+    """
+    pattern = r'^(\+?233)?0*\d{6,9}$'
+    
+    # Check if phone number matches the pattern
+    
+    has_meter_number = not pd.isnull(meter_number)
+    
+    # Check if all conditions are met
+    return bool(re.match(pattern, phone_number)) and has_meter_number

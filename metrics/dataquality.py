@@ -1,6 +1,12 @@
 import pandas as pd
 import re
 
+from feature_calculations import preprocess_meter_number
+from feature_calculations import preprocess_phone_number
+from feature_calculations import is_valid_meter_number
+from feature_calculations import is_valid_phone_number
+from feature_calculations import pn_has_integrity
+
 
 def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, meter_prefix=None, meter_length=None):
     metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
@@ -53,7 +59,7 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
             ).mean() * 100
         elif field_name == 'Account Number':
             integrity_check = (
-                (df['Account Number'].str.len() > 3) & 
+                (df['Account Number'].astype(str).str.len() > 3) & 
                 (df['SLRN'].notnull()) & 
                 (df['Meter Number'].notnull())
             ).mean() * 100
