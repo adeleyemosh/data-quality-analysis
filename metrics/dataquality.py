@@ -1,167 +1,176 @@
 import pandas as pd
 import re
 
-from feature_calculations import preprocess_meter_number
-from feature_calculations import preprocess_phone_number
-from feature_calculations import is_valid_meter_number
-from feature_calculations import is_valid_phone_number
-from feature_calculations import pn_has_integrity
-
-
 def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, meter_prefix=None, meter_length=None):
     metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
 
     # Only calculate metrics for specified fields
-    if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN']:
+    if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN', 'Phone Number', 'Email']:
         # Completeness
         metrics['Completeness'] = df[field_name].count() / len(df) * 100
 
         # Validity
-        if field_name == 'SLRN':
-            valid_slrn = df[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)
-            metrics['Validity'] = valid_slrn.mean() * 100
-        elif field_name == 'Meter SLRN':
-            valid_meter_slrn = df[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)
-            metrics['Validity'] = valid_meter_slrn.mean() * 100
-        elif field_name == 'Account Number':
-            valid_account_number = df[field_name].apply(lambda x: str(x).isnumeric())
-            metrics['Validity'] = valid_account_number.mean() * 100
-        elif field_name == 'Meter Number' and (slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD'):
-            valid_meter_number = df[field_name].apply(
-                lambda x: str(x).isnumeric() and 5 <= len(str(x)) <= 13
-            )
-            metrics['Validity'] = valid_meter_number.mean() * 100
-        elif field_name == 'Meter Number' and slrn_prefix == 'ECGBD':
-            valid_meter_number = df[field_name].apply(
-                lambda x: bool(re.match(r'^[0-9a-zA-Z]{5,14}$', str(x))) and sum(c.isalpha() for c in str(x)) <= 3
-            )
-            metrics['Validity'] = valid_meter_number.mean() * 100
-        else:
-            metrics['Validity'] = (df[field_name].notnull() & (df[field_name] != '')).mean() * 100
-        
+        metrics['Validity'] = calculate_validity(df, field_name, slrn_prefix, slrn_length, meter_prefix, meter_length)
+
         # Integrity check
-        if field_name == 'SLRN':
-            integrity_check = (
-                (df['SLRN'].notnull()) &
-                (df['Meter Number'].notnull() & (df['Meter Number'].str.len() > 5)) | 
-                df['Account Number'].notnull()
-            ).mean() * 100
-        elif field_name == 'Meter Number':
-            integrity_check = (
-                ((df['Meter Number'].notnull()) & (df['Meter Number'].str.len() >= 5) & (df['Meter Status'] == 'Metered')) |
-                ((df['Meter Number'].isnull()) & (df['Meter Status'] == 'Unmetered'))
-            ).mean() * 100
-        elif field_name == 'Meter SLRN':
-            integrity_check = (
-                (df['Meter SLRN'].str.len() > 10) & 
-                (df['SLRN'].notnull()) & 
-                (df['Meter Number'].notnull())
-            ).mean() * 100
-        elif field_name == 'Account Number':
-            integrity_check = (
-                (df['Account Number'].astype(str).str.len() > 3) & 
-                (df['SLRN'].notnull()) & 
-                (df['Meter Number'].notnull())
-            ).mean() * 100
-        # else:
-        #     integrity_check = 100  # For other fields, assume integrity by default
-
-        metrics['Integrity'] = integrity_check
+        metrics['Integrity'] = calculate_integrity(df, field_name, corresponding_meter_field='Meter Number')
     
     return metrics
 
-# Updated calculate_phone_number_metrics function
-def calculate_phone_number_metrics(df, field_name, slrn_prefix, corresponding_meter_field='Meter Number'):
-	metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
+# Helper functions
+def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_prefix='', meter_length=0, corresponding_meter_field=''):
+    if field_name == 'SLRN':
+        return (df[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)).mean() * 100
+    elif field_name == 'Meter SLRN':
+        return (df[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)).mean() * 100
+    elif field_name == 'Account Number':
+        return (df[field_name].apply(lambda x: str(x).isnumeric())).mean() * 100
+    elif field_name == 'Meter Number':
+        # Preprocess meter numbers
+        df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
+        
+        # Apply the validity check function to the preprocessed meter numbers
+        df['Meter Number Validity'] = df['Processed Meter Number'].apply(is_valid_meter_number)
+        
+        # Map the boolean results to strings ('Valid' or 'Not Valid')
+        return df['Meter Number Validity'].mean() * 100
+    elif field_name == 'Phone Number':        
+        # Preprocess phone numbers
+        df['Processed Phone Number'] = df[field_name].apply(preprocess_phone_number)
+        
+        # Apply the validity check function to the preprocessed phone numbers
+        df['Phone Number Validity'] = df['Processed Phone Number'].apply(is_valid_phone_number)
+        
+        # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
+        return df['Phone Number Validity'].mean() * 100
+    elif field_name == 'Email':
+        valid_format = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+        has_valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+        has_no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+        # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
+        return ((valid_format & has_valid_characters & has_no_placeholders).mean() * 100)
+    else:
+        return None
 
-	metrics['Completeness'] = df[field_name].count() / len(df) * 100
+def calculate_integrity(df, field_name, corresponding_meter_field=''):
+    if field_name == 'SLRN':
+        return ((df['SLRN'].notnull()) & (df[corresponding_meter_field].notnull() & (df[corresponding_meter_field].str.len() > 5)) | df['Account Number'].notnull()).mean() * 100
+    elif field_name == 'Meter SLRN':
+        return ((df['Meter SLRN'].str.len() > 10) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+    elif field_name == 'Meter Number':
+        # Preprocess meter numbers
+        df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
+        
+        # Apply the validity check function to the preprocessed meter numbers
+        df['Meter Number Validity'] = df['Processed Meter Number'].apply(is_valid_meter_number)
+        
+        has_integrity = (
+            (df['Processed Meter Number'].notnull()) &
+            (df['Processed Meter Number'].str.len() >= 5) &
+            (df['Meter Status'] == 'Metered') &
+            (df['SLRN'].notnull()) &
+            (df['Meter Number Validity'])
+        )
+        
+        return has_integrity.mean() * 100
+    elif field_name == 'Email':
+        consistent_formats = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+        valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+        no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+        # Check integrity based on conditions
+        
+        combined_conditions = consistent_formats & valid_characters & no_placeholders & (df[corresponding_meter_field].notnull())
+        
+        return combined_conditions.mean() * 100
+    elif field_name == 'Phone Number':        
+        # Preprocess phone numbers
+        df['Processed Phone Number'] = df[field_name].apply(preprocess_phone_number)
+        
+        # Apply the integrity check function to the preprocessed phone numbers and corresponding meter numbers
+        df['Phone Number Integrity'] = df.apply(lambda row: pn_has_integrity(row['Processed Phone Number'], row['Meter Number']), axis=1)
+        
+        # Return 'Has Integrity' if all conditions are met and there's a corresponding meter number, otherwise 'No Integrity'
+        return df['Phone Number Integrity'].mean() * 100
+    elif field_name == 'Account Number':
+        return ((df['Account Number'].astype(str).str.len() > 3) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+    else:
+        return None
 
-	if slrn_prefix == 'ECGBD':
-		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{9,12})?$', str(x)) is not None)
-		consistent_formats_percentage = consistent_formats.mean() * 100
-	elif slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD':
-		consistent_formats = df[field_name].apply(lambda x: re.match(r'^(\+?\d{11,13})?$', str(x)) is not None)
-		consistent_formats_percentage = consistent_formats.mean() * 100
-
-	valid_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+]+$', str(x)) is not None)
-	valid_characters_percentage = valid_characters.mean() * 100
-
-	if slrn_prefix == 'ECGBD':
-		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {9, 10, 12})
-		valid_lengths_percentage = valid_lengths.mean() * 100
-	elif slrn_prefix == 'AEDCBD' or slrn_prefix == 'YEDCBD':
-		valid_lengths = df[field_name].apply(lambda x: len(str(x)) in {10, 11, 13})
-		valid_lengths_percentage = valid_lengths.mean() * 100
-
-	special_characters = df[field_name].apply(lambda x: re.match(r'^[\d\+\s]+$', str(x)) is not None)
-	special_characters_percentage = special_characters.mean() * 100
-
-	no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-	no_placeholders_percentage = no_placeholders.mean() * 100
-
-	overall_integrity = (
-		consistent_formats_percentage + 
-		valid_characters_percentage + 
-		# valid_lengths_percentage +
-		special_characters_percentage + 
-		no_placeholders_percentage
-	) / 4
-
-	metrics['Validity'] = overall_integrity
-
-	integrity_check = (
-		(consistent_formats) &
-		(valid_characters) &
-		# (valid_lengths) &
-		(special_characters) &
-		(no_placeholders) &
-		(df[corresponding_meter_field].notnull())
-	).mean() * 100
-
-	metrics['Integrity'] = integrity_check
-
-	return metrics
-
-# Updated calculate_email_metrics function
-def calculate_email_metrics(df, field_name, corresponding_meter_field='Meter Number'):
-    metrics = {'Completeness': 0, 'Validity': 0, 'Integrity': 0}
-
-    metrics['Completeness'] = df[field_name].count() / len(df) * 100
+def preprocess_meter_number(meter_number):
+    """
+    Preprocess a meter number to remove scientific notation.
+    """
+    # Convert meter number to string
+    meter_number = str(meter_number)
     
-    consistent_formats = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    consistent_formats_percentage = consistent_formats.mean() * 100
+    # Remove scientific notation if present
+    if 'e' in meter_number.lower():
+        try:
+            meter_number = '{:.0f}'.format(float(meter_number))
+        except ValueError:
+            # If conversion to float fails, return original value
+            return meter_number
+    
+    return meter_number
 
-    valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    valid_characters_percentage = valid_characters.mean() * 100
 
-    no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-    no_placeholders_percentage = no_placeholders.mean() * 100
+def is_valid_meter_number(meter_number):
+    """
+    Check if a meter number is valid.
+    """
+    # Define conditions for meter number validity
+    valid_format = bool(re.match(r'^[0-9a-zA-Z]{5,14}$', meter_number))
+    has_alpha_chars = sum(c.isalpha() for c in meter_number) <= 3
+    
+    # Check if all conditions are met
+    return valid_format and has_alpha_chars
 
-    overall_integrity = (
-        consistent_formats_percentage + 
-        valid_characters_percentage + 
-        no_placeholders_percentage
-    ) / 3
 
-    metrics['Validity'] = overall_integrity
+def preprocess_phone_number(phone_number):
+    """
+    Preprocess a phone number to remove non-numeric characters.
+    """
+    # Convert phone number to string
+    phone_number = str(phone_number)
+    
+    # Remove non-numeric characters
+    phone_number = re.sub(r'\D', '', phone_number)
+    
+    return phone_number
 
-    integrity_check = (
-        (consistent_formats) &
-        (valid_characters) &
-        (no_placeholders) &
-        (df[corresponding_meter_field].notnull())
-    ).mean() * 100
 
-    metrics['Integrity'] = integrity_check
+def is_valid_phone_number(phone_number):
+    """
+    Check if a phone number is valid.
+    Valid phone numbers must start with '233' or '+233' and have a total length of 12.
+    """
+    # Define regular expression pattern for valid phone numbers
+    pattern = r'^(\+?233)?0*\d{6,9}$'
+    
+    # Check if phone number matches the pattern
+    return bool(re.match(pattern, phone_number))
 
-    weights = {'Completeness': 1, 'Validity': 1, 'Integrity': 0.25}
-    overall_score = sum(metrics[metric] * weights[metric] for metric in metrics) / sum(weights.values())
-    metrics['Overall Score'] = overall_score
 
-    return metrics
+def pn_has_integrity(phone_number, meter_number):
+    """
+    Check if a phone number has integrity.
+    """
+    pattern = r'^(\+?233)?0*\d{6,9}$'
+    
+    # Check if phone number matches the pattern
+    
+    has_meter_number = not pd.isnull(meter_number)
+    
+    # Check if all conditions are met
+    return bool(re.match(pattern, phone_number)) and has_meter_number
+
 
 def calculate_average_metrics(metrics_list, metric_name):
     # Calculate the average of a specific metric across all key fields
-    total_metric = sum(metrics[metric_name] for metrics in metrics_list)
-    average_metric = total_metric / len(metrics_list)
-    return average_metric
+    valid_metrics = [metrics[metric_name] for metrics in metrics_list if metrics[metric_name] is not None]
+    if valid_metrics:
+        total_metric = sum(valid_metrics)
+        average_metric = total_metric / len(valid_metrics)
+        return average_metric
+    else:
+        return 0  # or any other default value you prefer

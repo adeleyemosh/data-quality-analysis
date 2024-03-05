@@ -1,10 +1,7 @@
 import pandas as pd
 
 from metrics.convert_percentage_to_scale import convert_percentage_to_scale
-from metrics.dataquality import calculate_data_quality_metrics
-from metrics.dataquality import calculate_phone_number_metrics
-from metrics.dataquality import calculate_email_metrics
-from metrics.dataquality import calculate_average_metrics
+from metrics.dataquality import calculate_data_quality_metrics, calculate_average_metrics
 
 def calculate_overall_score(completeness_score, validity_score, integrity_score):
     # Convert percentage scores to the specified scale
@@ -49,20 +46,22 @@ def calculate_overall_score_mom(df):
 
         for field_name in key_fields:
             if field_name in df.columns:
-                if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN'] and slrn_prefix['ecg_prefix'] == 'ECGBD':
-                    metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
-                elif field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN'] and slrn_prefix['yedc_prefix'] == 'YEDCBD':
-                    metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13, 'YEDCCR', 12)
-                elif field_name in ['SLRN', 'Account Number', 'Meter Number'] and slrn_prefix['aedc_prefix'] == 'AEDCBD':
-                    metrics = calculate_data_quality_metrics(group, field_name, 'AEDCBD', 13)
-                elif field_name == 'Phone Number' and slrn_prefix['ecg_prefix'] == 'ECGBD':
-                    metrics = calculate_phone_number_metrics(group, field_name, 'ECGBD', corresponding_meter_field='Meter Number')
-                elif field_name == 'Phone Number' and slrn_prefix['aedc_prefix'] == 'AEDCBD':
-                    metrics = calculate_phone_number_metrics(group, field_name, 'AEDCBD', corresponding_meter_field='Meter Number')
-                elif field_name == 'Phone Number' and slrn_prefix['yedc_prefix'] == 'YEDCBD':
-                    metrics = calculate_phone_number_metrics(group, field_name, 'YEDCBD', corresponding_meter_field='Meter Number')
+                if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN']:
+                    if slrn_prefix['ecg_prefix'] == 'ECGBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
+                    elif slrn_prefix['yedc_prefix'] == 'YEDCBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13, 'YEDCCR', 12)
+                    elif slrn_prefix['aedc_prefix'] == 'AEDCBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'AEDCBD', 13)
+                elif field_name == 'Phone Number':
+                    if slrn_prefix['ecg_prefix'] == 'ECGBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
+                    elif slrn_prefix['aedc_prefix'] == 'AEDCBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'AEDCBD', 13)
+                    elif slrn_prefix['yedc_prefix'] == 'YEDCBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13, 'YEDCCR', 12)
                 elif field_name == 'Email':
-                    metrics = calculate_email_metrics(group, field_name, corresponding_meter_field='Meter Number')
+                    metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
                 
                 metrics_list.append(metrics)
 

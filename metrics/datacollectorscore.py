@@ -2,8 +2,6 @@ import pandas as pd
 
 from metrics.overallscore import calculate_overall_score
 from metrics.dataquality import calculate_data_quality_metrics
-from metrics.dataquality import calculate_phone_number_metrics
-from metrics.dataquality import calculate_email_metrics
 from metrics.dataquality import calculate_average_metrics
 
 def calculate_quality_score_by_collector(df, field_metrics, weights=None):
@@ -43,11 +41,11 @@ def calculate_quality_score_by_collector(df, field_metrics, weights=None):
 				elif field_name in ['SLRN', 'Account Number', 'Meter Number'] and slrn_prefix['aedc_prefix'] == 'AEDCBD':
 					metrics = calculate_data_quality_metrics(user_df, field_name, 'AEDCBD', 13)
 				elif field_name == 'Phone Number' and slrn_prefix['ecg_prefix'] == 'ECGBD':
-					metrics = calculate_phone_number_metrics(user_df, field_name, 'ECGBD', corresponding_meter_field='Meter Number')
+					metrics = calculate_data_quality_metrics(user_df, field_name, 'ECGBD', 12, 'ECGCR', 11)
 				elif field_name == 'Phone Number' and slrn_prefix['aedc_prefix'] == 'AEDCBD':
-					metrics = calculate_phone_number_metrics(user_df, field_name, 'AEDCBD', corresponding_meter_field='Meter Number')
+					metrics = calculate_data_quality_metrics(user_df, field_name, 'AEDCBD')
 				elif field_name == 'Email':
-					metrics = calculate_email_metrics(user_df, field_name, corresponding_meter_field='Meter Number')
+					metrics = calculate_data_quality_metrics(user_df, field_name, 'ECGBD', 12, 'ECGCR', 11)
 				
 				metrics_list.append(metrics)
 
