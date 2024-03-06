@@ -76,7 +76,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
     elif field_name == 'Meter SLRN':
         return (df[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)).map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Account Number':
-        return (df[field_name].apply(lambda x: str(x).isnumeric())).map({True: 'Valid', False: 'Not Valid'})
+        return ((df['Account Number'].astype(str).str.len() > 5) & df[field_name].apply(lambda x: str(x).isnumeric())).map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Meter Number':
         df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
         
@@ -134,6 +134,6 @@ def calculate_integrity(df, field_name, corresponding_meter_field=''):
         
         return df['Phone Number Integrity'].map({True: 'Has Integrity', False: 'No Integrity'})
     elif field_name == 'Account Number':
-        return ((df['Account Number'].astype(str).str.len() > 3) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+        return ((df['Account Number'].astype(str).str.len() > 5) & df['Account Number'].apply(lambda x: str(x).isnumeric()) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
     else:
         return None
