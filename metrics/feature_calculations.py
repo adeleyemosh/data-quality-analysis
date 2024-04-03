@@ -9,7 +9,7 @@ def calculate_unique_meter_count(df, date_column, meter_number_column):
     unique_meter_count.columns = [date_column, 'Unique Meter Count']
     return unique_meter_count
 
-def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn, mslrn_len):
+def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn=None, mslrn_len=None):
     result_data = []
 
     for year_month in df['Year Month'].unique():
