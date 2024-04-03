@@ -142,27 +142,36 @@ def preprocess_phone_number(phone_number):
 def is_valid_phone_number(phone_number):
     """
     Check if a phone number is valid.
-    Valid phone numbers must start with '233' or '+233' and have a total length of 12.
+    Valid phone numbers must start with '233' (Ghana) or '234' (Nigeria) or their international format '+233' or '+234'
+    and have a total length of 12 for Ghana and 13 for Nigeria. Numbers without the country code should have a character
+    length between 9 and 10 for Ghana or 10 and 11 for Nigeria to be considered valid.
     """
     # Define regular expression pattern for valid phone numbers
-    pattern = r'^(\+?233)?0*\d{6,9}$'
+    pattern = r'^(\+?233|\+?234)?0*\d{9,12}$'
+    without_country_code_pattern = r'^0\d{8,9}$'  # 9-10 digits for Ghana, 10-11 digits for Nigeria
     
-    # Check if phone number matches the pattern
-    return bool(re.match(pattern, phone_number))
+    # Check if phone number matches any of the patterns
+    if re.match(pattern, phone_number) or re.match(without_country_code_pattern, phone_number):
+        return True
+    else:
+        return False
 
 
 def pn_has_integrity(phone_number, meter_number):
     """
     Check if a phone number has integrity.
+    Valid phone numbers must start with '233' or '+233' and have a total length of 12.
+    Numbers without the country code should have a character length between 9 and 10 for Ghana or 10 and 11 for Nigeria.
     """
-    pattern = r'^(\+?233)?0*\d{6,9}$'
+    pattern = r'^(\+?233|\+?234)?0*\d{9,12}$'
+    without_country_code_pattern = r'^0\d{8,9}$'  # 9-10 digits for Ghana, 10-11 digits for Nigeria
     
-    # Check if phone number matches the pattern
-    
-    has_meter_number = not pd.isnull(meter_number)
-    
-    # Check if all conditions are met
-    return bool(re.match(pattern, phone_number)) and has_meter_number
+    # Check if phone number matches any of the patterns
+    if re.match(pattern, phone_number) or re.match(without_country_code_pattern, phone_number):
+        has_meter_number = not pd.isnull(meter_number)
+        return has_meter_number
+    else:
+        return False
 
 
 def calculate_average_metrics(metrics_list, metric_name):
