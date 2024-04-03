@@ -26,7 +26,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
             # Convert float values to integers before converting to strings and applying isnumeric check
-            return (df[field_name].fillna(0).astype(int).apply(lambda x: x.isnumeric())).mean() * 100
+            return (df[field_name].astype(str).str.len() >= 6).mean() * 100
         else:
             return (df[field_name].astype(str).apply(lambda x: x.isnumeric())).mean() * 100
     elif field_name == 'Meter Number':
