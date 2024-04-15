@@ -46,24 +46,29 @@ def calculate_overall_score_mom(df):
 
         for field_name in key_fields:
             if field_name in df.columns:
-                if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN']:
+                if field_name in ['SLRN', 'Account Number', 'Meter Number']:
                     if slrn_prefix['ecg_prefix'] == 'ECGBD':
                         metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
                     elif slrn_prefix['yedc_prefix'] == 'YEDCBD':
-                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13, 'YEDCCR', 12)
+                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13)
                     elif slrn_prefix['aedc_prefix'] == 'AEDCBD':
                         metrics = calculate_data_quality_metrics(group, field_name, 'AEDCBD', 13)
+                    metrics_list.append(metrics)
+                elif field_name == 'Meter SLRN':
+                    if slrn_prefix['ecg_prefix'] == 'ECGBD':
+                        metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
+                        metrics_list.append(metrics)
                 elif field_name == 'Phone Number':
                     if slrn_prefix['ecg_prefix'] == 'ECGBD':
                         metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
                     elif slrn_prefix['aedc_prefix'] == 'AEDCBD':
                         metrics = calculate_data_quality_metrics(group, field_name, 'AEDCBD', 13)
                     elif slrn_prefix['yedc_prefix'] == 'YEDCBD':
-                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13, 'YEDCCR', 12)
+                        metrics = calculate_data_quality_metrics(group, field_name, 'YEDCBD', 13)
+                    metrics_list.append(metrics)
                 elif field_name == 'Email':
                     metrics = calculate_data_quality_metrics(group, field_name, 'ECGBD', 12, 'ECGCR', 11)
-                
-                metrics_list.append(metrics)
+                    metrics_list.append(metrics)
 
         average_completeness = calculate_average_metrics(metrics_list, 'Completeness')
         average_validity = calculate_average_metrics(metrics_list, 'Validity')
