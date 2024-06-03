@@ -14,7 +14,7 @@ def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn=N
 
     for year_month in df['Year Month'].unique():
         # Filter the DataFrame for the current year_month
-        df_month = df[df['Year Month'] == year_month]
+        df_month = df[df['Year Month'] == year_month].copy() 
         
         # Calculate metrics for the current month
         metrics_list = []

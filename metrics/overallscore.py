@@ -4,26 +4,29 @@ from metrics.convert_percentage_to_scale import convert_percentage_to_scale
 from metrics.dataquality import calculate_data_quality_metrics, calculate_average_metrics
 
 def calculate_overall_score(completeness_score, validity_score, integrity_score):
-    # Convert percentage scores to the specified scale
-    completeness_score = convert_percentage_to_scale(completeness_score)
-    validity_score = convert_percentage_to_scale(validity_score)
-    integrity_score = convert_percentage_to_scale(integrity_score)
+    # # Convert percentage scores to the specified scale
+    # completeness_score = convert_percentage_to_scale(completeness_score)
+    # validity_score = convert_percentage_to_scale(validity_score)
+    # integrity_score = convert_percentage_to_scale(integrity_score)
 
-    # Weights for each metric
-    completeness_weight = 0.4
-    validity_weight = 0.4
-    integrity_weight = 0.2
+    # # Weights for each metric
+    # completeness_weight = 0.33333333333333333333333333333
+    # validity_weight = 0.33333333333333333333333333333
+    # integrity_weight = 0.33333333333333333333333333333
 
-    # Maximum possible score for each metric: scale from 0 to 5
-    max_completeness_score = 5
-    max_validity_score = 5
-    max_integrity_score = 5
+    # # Maximum possible score for each metric: scale from 0 to 5
+    # max_completeness_score = 5
+    # max_validity_score = 5
+    # max_integrity_score = 5
 
-    overall_score = (
-        (completeness_weight * (completeness_score / max_completeness_score)) +
-        (validity_weight * (validity_score / max_validity_score)) +
-        (integrity_weight * (integrity_score / max_integrity_score))
-    ) * 100
+    # overall_score = (
+    #     (completeness_weight * (completeness_score / max_completeness_score)) +
+    #     (validity_weight * (validity_score / max_validity_score)) +
+    #     (integrity_weight * (integrity_score / max_integrity_score))
+    # ) * 100
+    
+    total_score = (completeness_score + validity_score + integrity_score)
+    overall_score = total_score / 3
 
     return overall_score
 

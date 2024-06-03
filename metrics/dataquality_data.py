@@ -16,7 +16,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
             return ((df[field_name].astype(str).str.len() >= 6)).map({True: 'Valid', False: 'Not Valid'})
         else:
-            return ((df['Account Number'].astype(str).str.len() > 5) & df[field_name].apply(lambda x: str(x).isnumeric())).map({True: 'Valid', False: 'Not Valid'})
+            return (df['Account Number'].astype(str).str.len() > 5).map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Meter Number':
         df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
         
@@ -33,8 +33,15 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         valid_format = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nil', case=False) & \
+            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
+            ~df[field_name].astype(str).str.contains('example', case=False) 
+        
         # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
-        return ((valid_format & has_valid_characters & has_no_placeholders).map({True: 'Valid', False: 'Not Valid'}))
+        return ((valid_format & has_valid_characters & has_no_placeholders & no_noemail).map({True: 'Valid', False: 'Not Valid'}))
     else:
         return None
 
@@ -64,8 +71,15 @@ def calculate_integrity(df, field_name, slrn_prefix='', slrn_length=None, corres
         consistent_formats = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nil', case=False) & \
+            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
+            ~df[field_name].astype(str).str.contains('example', case=False) 
+        
         # Check integrity based on conditions
-        return ((consistent_formats) & (valid_characters) & (no_placeholders) & (df[corresponding_meter_field].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+        return ((consistent_formats) & (valid_characters) & (no_placeholders) & no_noemail  & (df[corresponding_meter_field].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
         df['Processed Phone Number'] = df[field_name].apply(preprocess_phone_number)
@@ -75,8 +89,8 @@ def calculate_integrity(df, field_name, slrn_prefix='', slrn_length=None, corres
         return df['Phone Number Integrity'].map({True: 'Has Integrity', False: 'No Integrity'})
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((df[field_name].astype(str).str.len() >= 6 & (df['SLRN'].notnull()) & (df['Meter Number'].notnull()))).map({True: 'Has Integrity', False: 'No Integrity'})
+            return (((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull()))).map({True: 'Has Integrity', False: 'No Integrity'})
         else:
-            return ((df['Account Number'].astype(str).str.len() > 5) & df['Account Number'].apply(lambda x: str(x).isnumeric()) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+            return ((df[field_name].astype(str).str.len() > 5) & df[field_name].notnull() & df['SLRN'].notnull() & df['Meter Number'].notnull()).map({True: 'Has Integrity', False: 'No Integrity'})
     else:
         return None

@@ -13,7 +13,7 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
         metrics['Validity'] = calculate_validity(df, field_name, slrn_prefix, slrn_length, meter_prefix, meter_length)
 
         # Integrity check
-        metrics['Integrity'] = calculate_integrity(df, field_name, corresponding_meter_field='Meter Number')
+        metrics['Integrity'] = calculate_integrity(df, field_name, slrn_prefix, corresponding_meter_field='Meter Number')
     
     return metrics
 
@@ -28,7 +28,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
             # Convert float values to integers before converting to strings and applying isnumeric check
             return (df[field_name].astype(str).str.len() >= 6).mean() * 100
         else:
-            return (df[field_name].astype(str).apply(lambda x: x.isnumeric())).mean() * 100
+            return (df[field_name].astype(str).str.len() >= 5).mean() * 100 #(df[field_name].astype(str).apply(lambda x: x.isnumeric())).mean() * 100
     elif field_name == 'Meter Number':
         # Preprocess meter numbers
         df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
@@ -51,12 +51,19 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         valid_format = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nil', case=False) & \
+            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
+            ~df[field_name].astype(str).str.contains('example', case=False) 
+        
         # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
-        return ((valid_format & has_valid_characters & has_no_placeholders).mean() * 100)
+        return ((valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100)
     else:
         return None
 
-def calculate_integrity(df, field_name, corresponding_meter_field=''):
+def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_field=''):
     if field_name == 'SLRN':
         return ((df['SLRN'].notnull()) & (df[corresponding_meter_field].notnull() & (df[corresponding_meter_field].str.len() > 5)) | df['Account Number'].notnull()).mean() * 100
     elif field_name == 'Meter SLRN':
@@ -81,9 +88,15 @@ def calculate_integrity(df, field_name, corresponding_meter_field=''):
         consistent_formats = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        # Check integrity based on conditions
+        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nil', case=False) & \
+            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
+            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
+            ~df[field_name].astype(str).str.contains('example', case=False) 
         
-        combined_conditions = consistent_formats & valid_characters & no_placeholders & (df[corresponding_meter_field].notnull())
+        # Check integrity based on conditions
+        combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (df[corresponding_meter_field].notnull())
         
         return combined_conditions.mean() * 100
     elif field_name == 'Phone Number':        
@@ -96,7 +109,10 @@ def calculate_integrity(df, field_name, corresponding_meter_field=''):
         # Return 'Has Integrity' if all conditions are met and there's a corresponding meter number, otherwise 'No Integrity'
         return df['Phone Number Integrity'].mean() * 100
     elif field_name == 'Account Number':
-        return ((df['Account Number'].astype(str).str.len() > 3) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+        if slrn_prefix in ['YEDCBD', 'AEDCBD']:
+            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+        else:
+            return ((df[field_name].astype(str).str.len() > 5) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
     else:
         return None
 
