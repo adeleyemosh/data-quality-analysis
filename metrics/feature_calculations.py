@@ -58,3 +58,37 @@ def calculate_metrics_by_month(df, key_fields, bd_slrn, bdslrn_len, meter_slrn=N
     result_df = result_df.sort_values(by='Year Month', ascending=True)
     
     return result_df
+
+def calculate_blank_metrics(df, key_fields):
+    result_data = []
+
+    for year_month in df['Year Month'].unique():
+        # Filter the DataFrame for the current year_month
+        df_month = df[df['Year Month'] == year_month]
+        
+        # Calculate metrics for the current month
+        metrics_list = []
+
+        for field_name in key_fields:
+            if field_name in df.columns:
+                total_records = len(df_month)
+                blanks = df_month[field_name].isnull().sum()
+                blank_percentage = (blanks / total_records) * 100
+
+                metrics = {
+                    'Year Month': year_month,
+                    'Field': field_name,
+                    'Total Records': total_records,
+                    'Blanks': blanks,
+                    'Blank Percentage': blank_percentage
+                }
+                
+                metrics_list.append(metrics)
+
+        result_data.extend(metrics_list)
+
+    # Convert the list of dictionaries to a DataFrame
+    result_df = pd.DataFrame(result_data)
+    result_df = result_df.sort_values(by='Year Month', ascending=True)
+    
+    return result_df
