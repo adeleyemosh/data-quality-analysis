@@ -89,7 +89,7 @@ def calculate_integrity(df, field_name, slrn_prefix='', slrn_length=None, corres
         return df['Phone Number Integrity'].map({True: 'Has Integrity', False: 'No Integrity'})
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return (((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull()))).map({True: 'Has Integrity', False: 'No Integrity'})
+            return (((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) & (df['SLRN'].notnull()) | (df['Meter Number'].notnull()))).map({True: 'Has Integrity', False: 'No Integrity'})
         else:
             return ((df[field_name].astype(str).str.len() > 5) & df[field_name].notnull() & df['SLRN'].notnull() & df['Meter Number'].notnull()).map({True: 'Has Integrity', False: 'No Integrity'})
     else:

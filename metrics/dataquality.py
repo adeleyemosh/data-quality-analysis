@@ -110,7 +110,7 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
         return df['Phone Number Integrity'].mean() * 100
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | (df['Meter Number'].notnull())).mean() * 100
         else:
             return ((df[field_name].astype(str).str.len() > 5) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
     else:
