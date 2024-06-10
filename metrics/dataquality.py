@@ -26,6 +26,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
             # Convert float values to integers before converting to strings and applying isnumeric check
+            # return (df['Meter Status'] == 'Unmetered').astype(int).mean() * 100
             return (df[field_name].astype(str).str.len() >= 6).mean() * 100
         else:
             return (df[field_name].astype(str).str.len() >= 5).mean() * 100 
@@ -111,7 +112,7 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
         return df['Phone Number Integrity'].mean() * 100
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | (df['Meter Number'].notnull())).mean() * 100
+            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | (df['Meter Number'].notnull()) | df['Meter Status'] == 'Unmetered').mean() * 100
         else:
             return ((df[field_name].astype(str).str.len() > 5) &  (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
     else:
