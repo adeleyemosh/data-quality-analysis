@@ -56,15 +56,9 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         valid_format = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         has_no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nil', case=False) & \
-            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
-            ~df[field_name].astype(str).str.contains('example', case=False) 
+        no_noemail = ~complete_records[field_name].astype(str).str.contains(r'(noemail|nomail|nil|noamail|nomai|example)', case=False)
         
-        # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
-        return ((valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100)
+        return (valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100
     else:
         return None
 
