@@ -22,8 +22,7 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
 
 # Helper functions
 def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_prefix='', meter_length=0, corresponding_meter_field=''):
-    df.copy()
-    complete_records = df[df[field_name].notnull()]
+    complete_records = df[df[field_name].notnull()].copy()
     
     if field_name == 'SLRN':
         return (complete_records[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)).mean() * 100
@@ -66,8 +65,7 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         return None
 
 def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_field=''):
-    df.copy()
-    complete_records = df[df[field_name].notnull()]
+    complete_records = df[df[field_name].notnull()].copy()
     
     if field_name == 'SLRN':
         return ((complete_records[field_name].notnull()) & (complete_records[corresponding_meter_field].notnull() & (complete_records[corresponding_meter_field].str.len() > 5)) | complete_records['Account Number'].notnull()).mean() * 100
