@@ -7,13 +7,16 @@ def calculate_data_quality_metrics(df, field_name, slrn_prefix, slrn_length, met
     # Only calculate metrics for specified fields
     if field_name in ['SLRN', 'Account Number', 'Meter Number', 'Meter SLRN', 'Phone Number', 'Email']:
         # Completeness
-        metrics['Completeness'] = df[field_name].count() / len(df) * 100
+        completeness = df[field_name].count() / len(df) * 100
+        metrics['Completeness'] = completeness
 
         # Validity
-        metrics['Validity'] = calculate_validity(df, field_name, slrn_prefix, slrn_length, meter_prefix, meter_length)
+        validity = calculate_validity(df, field_name, slrn_prefix, slrn_length, meter_prefix, meter_length)
+        metrics['Validity'] = (validity * completeness) / 100
 
         # Integrity check
-        metrics['Integrity'] = calculate_integrity(df, field_name, slrn_prefix, corresponding_meter_field='Meter Number')
+        integrity = calculate_integrity(df, field_name, slrn_prefix, corresponding_meter_field='Meter Number')
+        metrics['Integrity'] = (integrity * completeness) / 100
     
     return metrics
 
@@ -67,22 +70,22 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
     complete_records = df[df[field_name].notnull()]
     
     if field_name == 'SLRN':
-        return ((df[complete_records]['SLRN'].notnull()) & (df[corresponding_meter_field].notnull() & (df[corresponding_meter_field].str.len() > 5)) | df['Account Number'].notnull()).mean() * 100
+        return ((complete_records[field_name].notnull()) & (complete_records[corresponding_meter_field].notnull() & (complete_records[corresponding_meter_field].str.len() > 5)) | complete_records['Account Number'].notnull()).mean() * 100
     elif field_name == 'Meter SLRN':
-        return ((df[complete_records]['Meter SLRN'].str.len() > 10) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).mean() * 100
+        return ((complete_records['Meter SLRN'].str.len() > 10) & (complete_records['SLRN'].notnull()) & (complete_records['Meter Number'].notnull())).mean() * 100
     elif field_name == 'Meter Number':
         # Preprocess meter numbers
-        df['Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
+        complete_records['Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
         
         # Apply the validity check function to the preprocessed meter numbers
-        df['Meter Number Validity'] = df['Processed Meter Number'].apply(is_valid_meter_number)
+        complete_records['Meter Number Validity'] = complete_records['Processed Meter Number'].apply(is_valid_meter_number)
         
         has_integrity = (
-            (df['Processed Meter Number'].notnull()) &
-            (df['Processed Meter Number'].str.len() >= 5) &
-            (df['Meter Status'] == 'Metered') &
-            (df['SLRN'].notnull()) &
-            (df['Meter Number Validity'])
+            (complete_records['Processed Meter Number'].notnull()) &
+            (complete_records['Processed Meter Number'].str.len() >= 5) &
+            (complete_records['Meter Status'] == 'Metered') &
+            (complete_records['SLRN'].notnull()) &
+            (complete_records['Meter Number Validity'])
         )
         
         return has_integrity.mean() * 100
@@ -90,32 +93,27 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
         consistent_formats = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
         no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nil', case=False) & \
-            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
-            ~df[field_name].astype(str).str.contains('example', case=False) 
+        no_noemail = ~complete_records[field_name].astype(str).str.contains(r'(noemail|nomail|nil|noamail|nomai|example)', case=False)
         
         # Check integrity based on conditions
-        combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (df[corresponding_meter_field].notnull())
+        combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (complete_records[corresponding_meter_field].notnull())
         
         return combined_conditions.mean() * 100
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
-        df['Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
+        complete_records['Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
         
         # Apply the integrity check function to the preprocessed phone numbers and corresponding meter numbers
-        df['Phone Number Integrity'] = df.apply(lambda row: pn_has_integrity(row['Processed Phone Number'], row['Meter Number']), axis=1)
+        complete_records['Phone Number Integrity'] = complete_records.apply(lambda row: pn_has_integrity(row['Processed Phone Number'], row['Meter Number']), axis=1)
         
         # Return 'Has Integrity' if all conditions are met and there's a corresponding meter number, otherwise 'No Integrity'
-        return df['Phone Number Integrity'].mean() * 100
+        return complete_records['Phone Number Integrity'].mean() * 100
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((complete_records[field_name].astype(str).str.len() >= 6 | complete_records[field_name].notnull()) & (df[complete_records]['SLRN'].notnull() | df[complete_records]['Meter Status'].notnull())).mean() * 100
+            return ((complete_records[field_name].astype(str).str.len() >= 6 | complete_records[field_name].notnull()) & (complete_records['SLRN'].notnull() | complete_records['Meter Status'].notnull())).mean() * 100
             # return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | (df['Meter Number'].notnull()) | df['Meter Status'] == 'Unmetered').mean() * 100
         else:
-            return ((complete_records[field_name].astype(str).str.len() > 5) &  (df[complete_records]['SLRN'].notnull()) & (df[complete_records]['Meter Number'].notnull())).mean() * 100
+            return ((complete_records[field_name].astype(str).str.len() > 5) &  (complete_records['SLRN'].notnull()) & (complete_records['Meter Number'].notnull())).mean() * 100
     else:
         return None
 
