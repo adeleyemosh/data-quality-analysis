@@ -6,92 +6,93 @@ from metrics.dataquality import is_valid_meter_number
 from metrics.dataquality import preprocess_phone_number
 from metrics.dataquality import is_valid_phone_number
 from metrics.dataquality import pn_has_integrity
+from metrics.dataquality import is_valid_email
+
 
 def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_prefix='', meter_length=0, corresponding_meter_field=''):
+    complete_records = df[df[field_name].notnull()].copy()
+    
     if field_name == 'SLRN':
-        return (df[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)).map({True: 'Valid', False: 'Not Valid'})
+        return (complete_records[field_name].apply(lambda x: str(x).startswith(slrn_prefix) and len(str(x)) == slrn_length)).map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Meter SLRN':
-        return (df[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)).map({True: 'Valid', False: 'Not Valid'})
+        return (complete_records[field_name].apply(lambda x: str(x).startswith(meter_prefix) and len(str(x)) >= meter_length)).map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((df[field_name].astype(str).str.len() >= 6)).map({True: 'Valid', False: 'Not Valid'})
+            # Convert float values to integers before converting to strings and applying isnumeric check
+            return (complete_records[field_name].astype(str).str.len() >= 6 | complete_records[field_name].notnull()).map({True: 'Valid', False: 'Not Valid'})
         else:
-            return (df['Account Number'].astype(str).str.len() > 5).map({True: 'Valid', False: 'Not Valid'})
-    elif field_name == 'Meter Number':
-        df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
-        
-        df['Meter Number Validity'] = df['Processed Meter Number'].apply(is_valid_meter_number)
-        
-        return df['Meter Number Validity'].map({True: 'Valid', False: 'Not Valid'})
-    elif field_name == 'Phone Number':        
-        df['Processed Phone Number'] = df[field_name].apply(preprocess_phone_number)
-        
-        df['Phone Number Validity'] = df['Processed Phone Number'].apply(is_valid_phone_number)
-        
-        return df['Phone Number Validity'].map({True: 'Valid', False: 'Not Valid'})
-    elif field_name == 'Email':
-        valid_format = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        has_valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        has_no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nil', case=False) & \
-            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
-            ~df[field_name].astype(str).str.contains('example', case=False) 
-        
-        # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
-        return ((valid_format & has_valid_characters & has_no_placeholders & no_noemail).map({True: 'Valid', False: 'Not Valid'}))
-    else:
-        return None
-
-def calculate_integrity(df, field_name, slrn_prefix='', slrn_length=None, corresponding_meter_field=''):
-    if field_name == 'SLRN':
-        return ((df['SLRN'].notnull()) & (df[corresponding_meter_field].notnull() & (df[corresponding_meter_field].str.len() > 5)) | df['Account Number'].notnull()).map({True: 'Has Integrity', False: 'No Integrity'})
-    elif field_name == 'Meter SLRN':
-        return ((df['Meter SLRN'].str.len() > 10) & (df['SLRN'].notnull()) & (df['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+            return (complete_records[field_name].astype(str).str.len() >= 5).map({True: 'Valid', False: 'Not Valid'}) 
     elif field_name == 'Meter Number':
         # Preprocess meter numbers
-        df['Processed Meter Number'] = df[field_name].apply(preprocess_meter_number)
+        complete_records.loc[:, 'Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
         
         # Apply the validity check function to the preprocessed meter numbers
-        df['Meter Number Validity'] = df['Processed Meter Number'].apply(is_valid_meter_number)
+        complete_records.loc[:, 'Meter Number Validity'] = complete_records['Processed Meter Number'].apply(is_valid_meter_number)
         
-        # Check integrity based on conditions
-        has_integrity = (
-            (df['Processed Meter Number'].notnull()) &
-            (df['Processed Meter Number'].str.len() >= 5) &
-            (df['Meter Status'] == 'Metered') &
-            (df['SLRN'].notnull()) &
-            (df['Meter Number Validity'])
-        )
-        # Map True/False to 'Has Integrity'/'No Integrity'
-        return has_integrity.map({True: 'Has Integrity', False: 'No Integrity'})
-    elif field_name == 'Email':
-        consistent_formats = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        valid_characters = df[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        no_placeholders = df[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~df[field_name].astype(str).str.contains('noemail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nil', case=False) & \
-            ~df[field_name].astype(str).str.contains('noamail', case=False) & \
-            ~df[field_name].astype(str).str.contains('nomai', case=False) & \
-            ~df[field_name].astype(str).str.contains('example', case=False) 
-        
-        # Check integrity based on conditions
-        return ((consistent_formats) & (valid_characters) & (no_placeholders) & no_noemail  & (df[corresponding_meter_field].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+        return complete_records['Meter Number Validity'].map({True: 'Valid', False: 'Not Valid'})
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
-        df['Processed Phone Number'] = df[field_name].apply(preprocess_phone_number)
+        complete_records.loc[:, 'Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
         
-        df['Phone Number Integrity'] = df.apply(lambda row: pn_has_integrity(row['Processed Phone Number'], row['Meter Number']), axis=1)
+        # Apply the validity check function to the preprocessed phone numbers
+        complete_records.loc[:, 'Phone Number Validity'] = complete_records['Processed Phone Number'].apply(is_valid_phone_number)
         
-        return df['Phone Number Integrity'].map({True: 'Has Integrity', False: 'No Integrity'})
+        return complete_records['Phone Number Validity'].map({True: 'Valid', False: 'Not Valid'})
+    elif field_name == 'Email':
+        # Apply the validity check function to the email field
+        complete_records.loc[:, 'Email Validity'] = complete_records[field_name].apply(is_valid_email)
+        
+        return complete_records['Email Validity'].map({True: 'Valid', False: 'Not Valid'})
+    else:
+        return None
+    
+
+def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_field=''):
+    complete_records = df[df[field_name].notnull()].copy()
+    
+    if field_name == 'SLRN':
+        return ((complete_records[field_name].notnull()) & (complete_records[corresponding_meter_field].notnull() & (complete_records[corresponding_meter_field].str.len() > 5)) | complete_records['Account Number'].notnull()).map({True: 'Has Integrity', False: 'No Integrity'})
+    elif field_name == 'Meter SLRN':
+        return ((complete_records['Meter SLRN'].str.len() > 10) & (complete_records['SLRN'].notnull()) & (complete_records['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
+    elif field_name == 'Meter Number':
+        # Preprocess meter numbers
+        complete_records['Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
+        
+        # Apply the validity check function to the preprocessed meter numbers
+        complete_records['Meter Number Validity'] = complete_records['Processed Meter Number'].apply(is_valid_meter_number)
+        
+        has_integrity = (
+            (complete_records['Processed Meter Number'].notnull()) &
+            (complete_records['Processed Meter Number'].str.len() >= 5) &
+            (complete_records['Meter Status'] == 'Metered') &
+            (complete_records['SLRN'].notnull()) &
+            (complete_records['Meter Number Validity'])
+        )
+        
+        return has_integrity.map({True: 'Has Integrity', False: 'No Integrity'})
+    elif field_name == 'Email':
+        # Apply the validity check function to the email field
+        complete_records.loc[:, 'Email Validity'] = complete_records[field_name].apply(is_valid_email)
+        
+        valid_email = complete_records['Email Validity']
+        
+        combined_conditions = valid_email & (complete_records['Meter Number'].notnull() | complete_records['Account Number'].notnull())
+        
+        return combined_conditions.map({True: 'Has Integrity', False: 'No Integrity'})
+    elif field_name == 'Phone Number':        
+        # Preprocess phone numbers
+        complete_records.loc[:, 'Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
+        
+        # Apply the validity check function to the preprocessed phone numbers
+        complete_records.loc[:, 'Phone Number Validity'] = complete_records['Processed Phone Number'].apply(is_valid_phone_number)
+        
+        combined_conditions = complete_records['Phone Number Validity'] & (complete_records['Meter Number'].notnull() | complete_records['Account Number'].notnull())
+        
+        return combined_conditions.map({True: 'Has Integrity', False: 'No Integrity'})
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
-            return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | df['Meter Status'] == 'Unmetered').map({True: 'Has Integrity', False: 'No Integrity'})
-            # return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) & (df['SLRN'].notnull() | df['Meter Number'].notnull()) | df['Meter Status'] == 'Unmetered').map({True: 'Has Integrity', False: 'No Integrity'})
+            return ((complete_records[field_name].astype(str).str.len() >= 6 | complete_records[field_name].notnull()) & (complete_records['SLRN'].notnull() | complete_records['Meter Status'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
         else:
-            return ((df[field_name].astype(str).str.len() > 5) & df[field_name].notnull() & df['SLRN'].notnull() & df['Meter Number'].notnull()).map({True: 'Has Integrity', False: 'No Integrity'})
+            return ((complete_records[field_name].astype(str).str.len() > 5) &  (complete_records['SLRN'].notnull()) & (complete_records['Meter Number'].notnull())).map({True: 'Has Integrity', False: 'No Integrity'})
     else:
         return None
