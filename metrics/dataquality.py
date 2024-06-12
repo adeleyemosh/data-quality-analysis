@@ -38,29 +38,38 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
             #return (df[field_name].astype(str).apply(lambda x: x.isnumeric())).mean() * 100
     elif field_name == 'Meter Number':
         # Preprocess meter numbers
-        complete_records['Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
+        complete_records.loc[:, 'Processed Meter Number'] = complete_records[field_name].apply(preprocess_meter_number)
         
         # Apply the validity check function to the preprocessed meter numbers
-        complete_records['Meter Number Validity'] = complete_records['Processed Meter Number'].apply(is_valid_meter_number)
+        complete_records.loc[:, 'Meter Number Validity'] = complete_records['Processed Meter Number'].apply(is_valid_meter_number)
         
-        # Map the boolean results to strings ('Valid' or 'Not Valid')
         return complete_records['Meter Number Validity'].mean() * 100
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
-        complete_records['Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
+        complete_records.loc[:, 'Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
         
         # Apply the validity check function to the preprocessed phone numbers
-        complete_records['Phone Number Validity'] = complete_records['Processed Phone Number'].apply(is_valid_phone_number)
+        complete_records.loc[:, 'Phone Number Validity'] = complete_records['Processed Phone Number'].apply(is_valid_phone_number)
         
-        # Return 'Valid' if all conditions are met, otherwise 'Not Valid'
         return complete_records['Phone Number Validity'].mean() * 100
     elif field_name == 'Email':
-        valid_format = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        has_valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        has_no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~complete_records[field_name].astype(str).str.contains(r'(noemail|nomail|nil|noamail|nomai|example)', case=False)
+        # Apply the validity check function to the email field
+        complete_records.loc[:, 'Email Validity'] = complete_records[field_name].apply(is_valid_email)
         
-        return (valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100
+        return complete_records['Email Validity'].mean() * 100
+
+    # elif field_name == 'Email':
+    #     valid_format = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+    #     has_valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+    #     has_no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+    #     no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nomail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nil', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('noamail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nomai', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('example', case=False) 
+        
+    #     return (valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100
     else:
         return None
 
@@ -88,28 +97,44 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
         
         return has_integrity.mean() * 100
     elif field_name == 'Email':
-        consistent_formats = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-        no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-        no_noemail = ~complete_records[field_name].astype(str).str.contains(r'(noemail|nomail|nil|noamail|nomai|example)', case=False)
+        # Apply the validity check function to the email field
+        complete_records.loc[:, 'Email Validity'] = complete_records[field_name].apply(is_valid_email)
         
-        # Check integrity based on conditions
-        combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (complete_records[corresponding_meter_field].notnull())
+        valid_email = complete_records['Email Validity']
+        
+        combined_conditions = valid_email & (complete_records['Meter Number'].notnull() | complete_records['Account Number'].notnull())
         
         return combined_conditions.mean() * 100
+
+    # elif field_name == 'Email':
+    #     consistent_formats = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+    #     valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
+    #     no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
+    #     no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nomail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nil', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('noamail', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('nomai', case=False) & \
+    #         ~complete_records[field_name].astype(str).str.contains('example', case=False) 
+        
+        
+    #     # Check integrity based on conditions
+    #     combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (complete_records[corresponding_meter_field].notnull())
+        
+    #     return combined_conditions.mean() * 100
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
-        complete_records['Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
+        complete_records.loc[:, 'Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
         
-        # Apply the integrity check function to the preprocessed phone numbers and corresponding meter numbers
-        complete_records['Phone Number Integrity'] = complete_records.apply(lambda row: pn_has_integrity(row['Processed Phone Number'], row['Meter Number']), axis=1)
+        # Apply the validity check function to the preprocessed phone numbers
+        complete_records.loc[:, 'Phone Number Validity'] = complete_records['Processed Phone Number'].apply(is_valid_phone_number)
         
-        # Return 'Has Integrity' if all conditions are met and there's a corresponding meter number, otherwise 'No Integrity'
-        return complete_records['Phone Number Integrity'].mean() * 100
+        combined_conditions = complete_records['Phone Number Validity'] & (complete_records['Meter Number'].notnull() | complete_records['Account Number'].notnull())
+        
+        return combined_conditions.mean() * 100
     elif field_name == 'Account Number':
         if slrn_prefix in ['YEDCBD', 'AEDCBD']:
             return ((complete_records[field_name].astype(str).str.len() >= 6 | complete_records[field_name].notnull()) & (complete_records['SLRN'].notnull() | complete_records['Meter Status'].notnull())).mean() * 100
-            # return ((df[field_name].astype(str).str.len() >= 6 | df[field_name].notnull()) &  (df['SLRN'].notnull()) | (df['Meter Number'].notnull()) | df['Meter Status'] == 'Unmetered').mean() * 100
         else:
             return ((complete_records[field_name].astype(str).str.len() > 5) &  (complete_records['SLRN'].notnull()) & (complete_records['Meter Number'].notnull())).mean() * 100
     else:
@@ -176,7 +201,7 @@ def is_valid_phone_number(phone_number):
         return False
 
 
-def pn_has_integrity(phone_number, meter_number):
+def pn_has_integrity(phone_number, meter_number, account_number):
     """
     Check if a phone number has integrity.
     Valid phone numbers must start with '233' or '+233' and have a total length of 12.
@@ -187,10 +212,22 @@ def pn_has_integrity(phone_number, meter_number):
     
     # Check if phone number matches any of the patterns
     if re.match(pattern, phone_number) or re.match(without_country_code_pattern, phone_number):
-        has_meter_number = not pd.isnull(meter_number)
+        has_meter_number = not (pd.isnull(meter_number) or pd.isnull(account_number))
         return has_meter_number
     else:
         return False
+
+def is_valid_email(email):
+    """
+    Check if an email is valid.
+    """
+    # Conditions for email validity
+    valid_format = re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(email)) is not None
+    has_valid_characters = re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(email)) is not None
+    has_no_placeholders = not pd.isnull(email) and str(email).strip() != ''
+    no_noemail = not re.search(r'(noemail|nomail|nil|noamail|nomai|example)', str(email), re.IGNORECASE)
+    
+    return valid_format and has_valid_characters and has_no_placeholders and no_noemail
 
 
 def calculate_average_metrics(metrics_list, metric_name):
