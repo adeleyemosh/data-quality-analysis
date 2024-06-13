@@ -57,19 +57,6 @@ def calculate_validity(df, field_name, slrn_prefix='', slrn_length=0, meter_pref
         complete_records.loc[:, 'Email Validity'] = complete_records[field_name].apply(is_valid_email)
         
         return complete_records['Email Validity'].mean() * 100
-
-    # elif field_name == 'Email':
-    #     valid_format = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    #     has_valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    #     has_no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-    #     no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nomail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nil', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('noamail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nomai', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('example', case=False) 
-        
-    #     return (valid_format & has_valid_characters & has_no_placeholders & no_noemail).mean() * 100
     else:
         return None
 
@@ -105,23 +92,6 @@ def calculate_integrity(df, field_name, slrn_prefix='', corresponding_meter_fiel
         combined_conditions = valid_email & (complete_records['Meter Number'].notnull() | complete_records['Account Number'].notnull())
         
         return combined_conditions.mean() * 100
-
-    # elif field_name == 'Email':
-    #     consistent_formats = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    #     valid_characters = complete_records[field_name].apply(lambda x: re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', str(x)) is not None)
-    #     no_placeholders = complete_records[field_name].apply(lambda x: not pd.isnull(x) and str(x).strip() != '')
-    #     no_noemail = ~complete_records[field_name].astype(str).str.contains('noemail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nomail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nil', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('noamail', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('nomai', case=False) & \
-    #         ~complete_records[field_name].astype(str).str.contains('example', case=False) 
-        
-        
-    #     # Check integrity based on conditions
-    #     combined_conditions = consistent_formats & valid_characters & no_placeholders & no_noemail & (complete_records[corresponding_meter_field].notnull())
-        
-    #     return combined_conditions.mean() * 100
     elif field_name == 'Phone Number':        
         # Preprocess phone numbers
         complete_records.loc[:, 'Processed Phone Number'] = complete_records[field_name].apply(preprocess_phone_number)
