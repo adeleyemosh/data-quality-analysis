@@ -133,7 +133,7 @@ def is_valid_meter_number(meter_number):
     Check if a meter number is valid.
     """
     # Define conditions for meter number validity
-    valid_format = bool(re.match(r'^[0-9a-zA-Z]{5,14}$', meter_number))
+    valid_format = bool(re.match(r'^[0-9a-zA-Z-]{5,14}$', meter_number))
     has_alpha_chars = sum(c.isalpha() for c in meter_number) <= 3
     
     # Check if all conditions are met
